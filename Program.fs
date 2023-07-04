@@ -182,8 +182,7 @@ let decode (pixels: int [,]) =
             avg x y
             - topRight x y
             - bottomLeft x y
-            - bottomRight x y
-            + 1)
+            - bottomRight x y)
 
 
 let decodeLvl minLvl (pixels: int [,]) =
@@ -226,22 +225,23 @@ let takeTopLeft (pixels: int [,]) =
 
 
 
-let rec convertRecursively pixels =
+let rec encodeRec lvls pixels =
     let width = Array2D.length1 pixels
     let height = Array2D.length2 pixels
 
+
     let avgDiff =
-        if (width % 2) = 1 || (height % 2) = 1 then
+        if lvls = 0 then
             pixels
         else
             encode pixels
 
     let partToReplace =
-        if (width % 2) = 1 || (height % 2) = 1 then
+        if lvls = 0 then
             pixels
         else
-            let topLeft = takeTopLeft avgDiff |> log "topLeft"
-            convertRecursively topLeft
+            let topLeft = takeTopLeft avgDiff 
+            encodeRec (lvls-1) topLeft
 
     let result =
         Array2D.init width height (fun x y ->
@@ -251,6 +251,14 @@ let rec convertRecursively pixels =
                 avgDiff.[x, y])
 
     result
+
+
+let rec decodeRec lvls pixels =
+    if lvls = 2 then
+        decode pixels
+    else
+        let topLeft = takeTopLeft pixels 
+        decodeRec (lvls-1) topLeft
 
 
 let makeIncrementing2DArray width height =
@@ -287,7 +295,7 @@ let d1 = 128
 let d2 = 128
 let maxVal = 256 //2.0**16.0 |> int |> log "maxVal"
 
-let minLvl = 8 
+let minLvl = 9
 
 let errorRate errorSum =
     (float errorSum |> log "errorSum")
@@ -316,18 +324,20 @@ let filePath = @"image.jpeg"
 let outputPath = @"image2.jpeg"
 let img = getImageData filePath
 
+let lvls = 3
+
 let encodedImg =
     { img with
-        red = img.red |> encodeLvl minLvl
-        green = img.green |> encodeLvl minLvl
-        blue = img.blue |> encodeLvl minLvl }
+        red = img.red |> encodeRec lvls
+        green = img.green |> encodeRec lvls
+        blue = img.blue |> encodeRec lvls }
 
 writeImageData outputPath encodedImg
 
 let decodedImg =
     { encodedImg with
-        red = encodedImg.red |> decodeLvl minLvl
-        green = encodedImg.green |> decodeLvl minLvl
-        blue = encodedImg.blue |> decodeLvl minLvl }
+        red = encodedImg.red |> decodeRec lvls
+        green = encodedImg.green |> decodeRec lvls
+        blue = encodedImg.blue |> decodeRec lvls }
 
-writeImageData @"image3.jpeg" decodedImg
+writeImageData @"image3.bmp" decodedImg
